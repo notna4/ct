@@ -1,125 +1,279 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+#include <ctype.h>
 
-// next lab is not mandatory but it will be good to come
-// and present the working version of ID, CT_INT and CT_REAL
+#define SAFEALLOC(var, Type)                          \
+    if ((var = (Type *)malloc(sizeof(Type))) == NULL) \
+        err("not enough memory");
 
-#define SAFEALLOC(var,Type)if((var=(Type*)malloc(sizeof(Type)))==NULL)err("not enough memory");
+enum
+{
+    ID,
+    END,
+    CT_INT,
+    CT_REAL
+};
 
-enum { ID, END, CT_INT, ASSIGN, SEMICOLON }; // tokens codes
-
-typedef struct _Token {
+typedef struct _Token
+{
     int code; // code (name)
-    union {
-        char *text; // used for ID, CT_STRING (dynamically allocated)
-        long int i; // used for CT_INT, CT_CHAR
-        double r; // used for CT_REAL
+    union
+    {
+        char *text; // used for ID
+        long int i; // used for CT_INT
+        double r;   // used for CT_REAL
     };
-    int line; // the input file line
+    int line;            // the input file line
     struct _Token *next; // link to the next token
 } Token;
 
-Token *addTk(int code) {
-    Token *tk;
-    SAFEALLOC(tk,Token);
-    tk->code=code;
-    tk->line=line;
-    tk->next=NULL;
+Token *tokens = NULL;
+Token *lastToken = NULL;
 
-    if (lastToken) {
-        lastToken->next=tk;
-    } else {
-        tokens=tk;
+int line = 1;
+const char *pCrtCh;
+
+void err(const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    fprintf(stderr, "error: ");
+    vfprintf(stderr, fmt, va);
+    fputc('\n', stderr);
+    va_end(va);
+    exit(-1);
+}
+
+void tkerr(const Token *tk, const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    fprintf(stderr, "error in line %d: ", tk->line);
+    vfprintf(stderr, fmt, va);
+    fputc('\n', stderr);
+    va_end(va);
+    exit(-1);
+}
+
+Token *addTk(int code, int line)
+{
+    Token *tk;
+    SAFEALLOC(tk, Token)
+    tk->code = code;
+    tk->line = line;
+    tk->next = NULL;
+    if (lastToken)
+    {
+        lastToken->next = tk;
     }
-    
-    lastToken=tk;
+    else
+    {
+        tokens = tk;
+    }
+    lastToken = tk;
     return tk;
 }
 
-void err(const char *fmt,...) {
-    va_list va;
-    va_start(va,fmt);
-    fprintf(stderr,"error: ");
-    vfprintf(stderr,fmt,va);
-    fputc('\n',stderr);
-    va_end(va);
-    exit(-1);
-}
-
-void tkerr(const Token *tk,const char *fmt,...)
+char *createString(const char *start, const char *end)
 {
-    va_list va;
-    va_start(va,fmt);
-    fprintf(stderr,"error in line %d: ",tk->line);
-    vfprintf(stderr,fmt,va);
-    fputc('\n',stderr);
-    va_end(va);
-    exit(-1);
+    int length = end - start;
+    char *str = (char *)malloc(length + 1);
+    if (str == NULL)
+    {
+        err("not enough memory");
+    }
+    strncpy(str, start, length);
+    str[length] = '\0';
+    return str;
 }
 
-int getNextToken() {
-    int state=0,nCh;
+int getNextToken()
+{
+    int state = 0;
     char ch;
-    const char *pStartCh; // here i can test
+    const char *pStartCh;
     Token *tk;
-    while(1) { // infinite loop
-        ch=*pCrtCh;
-        switch(state){
-            case 0: // transitions test for state 0
-                if(isalpha(ch) || ch == '_'){
-                    pStartCh=pCrtCh; // memorizes the beginning of the ID
-                    pCrtCh++; // consume the character
-                    state=1; // set the new state
+    while (1)
+    {
+        ch = *pCrtCh;
+        printf("ch %c\n", ch);
+        printf("state %d\n", state);
+        switch (state)
+        {
+        case 0:
+            printf("CASE 1\n");
+            if (isalpha(ch) || ch == '_')
+            {
+                pStartCh = pCrtCh; // memorizes the beginning of the ID
+                pCrtCh++;          // consume the character
+                state = 1;         // set the new state
+            }
+            else if (isdigit(ch))
+            {
+                pStartCh = pCrtCh;
+                pCrtCh++;
+                if (ch >= '1' && ch <= '9')
+                {
+                    printf("via 3\n");
+                    state = 3;
                 }
-                else if(ch == '=') {
-                    pCrtCh++;
-                    state=3;
+                else
+                {
+                    printf("via 5\n");
+                    state = 5;
                 }
-                else if(ch == ' ' || ch == '\r' || ch == '\t'){
-                    pCrtCh++; // consume the character and remains in state 0
-                }
-                else if(ch=='\n'){ // handled separately in order to update the current line
-                    line++;
-                    pCrtCh++;
-                }
-                else if(ch==0){ // the end of the input string
-                    addTk(END);
-                    return END;
-                }
-                else tkerr(addTk(END),"invalid character");
-                    break;
-                case 1:
-                    if(isalnum(ch) || ch == '_') pCrtCh++;
-                    else state=2;
-                    break;
-                case 2:
-                    nCh=pCrtCh-pStartCh; // the id length
-                    // keywords tests
-                    if(nCh == 5 && !memcmp(pStartCh,"break",5)) tk = addTk(BREAK);
-                    else if(nCh==4&&!memcmp(pStartCh,"char",4))tk=addTk(CHAR);
-                    // … all keywords …
-                    else{ // if no keyword, then it is an ID
-                        tk=addTk(ID);
-                        tk->text=createString(pStartCh,pCrtCh);
-                    }
-                    return tk->code;
-                case 3:
-                    if(ch == '=') {
-                        pCrtCh++;
-                        state=4;
-                    }
-                    else state=5;
-                    break;
-                case 4:
-                    addTk(EQUAL);
-                    return EQUAL;
-                case 5:
-                    addTk(ASSIGN);
-                    return ASSIGN;
+            }
+            else if (ch == ' ' || ch == '\r' || ch == '\t')
+            {
+                pCrtCh++;
+            }
+            else if (ch == '\n')
+            {
+                line++;
+                pCrtCh++;
+            }
+            else
+            {
+                tkerr(addTk(END, line), "invalid character");
+            }
+            break;
+        case 1:
+            printf("CASE 1\n");
+            if (isalnum(ch) || ch == '_')
+            {
+                pCrtCh++;
+                state = 2;
+            }
+            else
+            {
+                tkerr(addTk(END, line), "invalid real number format");
+            }
+            break;
+        case 2:
+            printf("CASE 2\n");
+            if (isalnum(ch) || ch == '_')
+            {
+                pCrtCh++;
+            }
+            else
+            {
+                tk = addTk(ID, line);
+                tk->text = createString(pStartCh, pCrtCh);
+                return tk->code;
+            }
+            break;
+        case 3:
+            printf("CASE 3\n");
+            if (isdigit(ch))
+            {
+                pCrtCh++;
+            }
+            else if (ch == '.')
+            {
+                printf(". read\n");
+                state = 8;
+            }
+            else if (ch == 'e' || ch == 'E')
+            {
+                printf("e/E read\n");
+                state = 13;
+            }
+            else
+            {
+                printf("final int\n");
+                tk = addTk(CT_INT, line);
+                tk->i = strtol(pStartCh, NULL, 10);
+                return tk->code;
+            }
+            break;
+        case 4:
+            if (isdigit(ch))
+                pCrtCh++;
+            else
+            {
+                tk = addTk(CT_REAL, line);
+                tk->r = atof(pStartCh);
+                return tk->code;
+            }
+            break;
+        case 5:
+            if (ch == 'x')
+            {
+                printf("x read\n");
+                state = 6;
+            }
+            else if (ch == '.')
+            {
+                printf(". read\n");
+                pCrtCh++;
+                state = 8;
+            }
+            else if (ch >= '0' && ch <= '7')
+            {
+                printf("between 0 and 7\n");
+                pCrtCh++;
+            }
+            else
+            {
+                printf("8 or 9 was read\n");
+                state = 3;
+            }
+            break;
+        case 6:
+            if (isalnum(ch))
+            {
+                printf("is alpha\n");
+                pCrtCh++;
+            }
+            else
+            {
+                tk = addTk(CT_INT, line);
+                tk->text = createString(pStartCh, pCrtCh);
+                return tk->code;
+            }
+            break;
         }
     }
 }
 
-int main() {
-    
+void showTokens()
+{
+    Token *current_token = tokens;
+    while (current_token != NULL)
+    {
+        printf("Token code: %d, Line: %d\n", current_token->code, current_token->line);
+        if (current_token->code == ID)
+        {
+            printf("ID: %s\n", current_token->text);
+        }
+        else if (current_token->code == CT_INT)
+        {
+            printf("CT_INT: %ld\n", current_token->i);
+        }
+        else if (current_token->code == CT_REAL)
+        {
+            printf("CT_REAL: %f\n", current_token->r);
+        }
+        current_token = current_token->next;
+    }
+}
+
+int main()
+{
+
+    const char input[] = "0123 hello";
+    pCrtCh = input;
+
+    while (*pCrtCh != '\0')
+    {
+        getNextToken();
+    }
+
+    showTokens();
+
+    // done() here i have to free the memory
+
+    return 0;
 }
