@@ -15,6 +15,30 @@ enum
     CT_INT,
     CT_REAL,
     CT_CHAR,
+    CT_STRING,
+    COMMA,
+    SEMICOLON,
+    LPAR,
+    RPAR,
+    LBRACKET, // 10
+    RBRACKET,
+    LACC,
+    RACC,
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    DOT,
+    AND,
+    OR, // 20
+    NOT,
+    ASSIGN,
+    EQUAL,
+    NOTEQ,
+    LESS,
+    LESSEQ,
+    GREATER,
+    GREATEREQ,
 };
 
 typedef struct _Token
@@ -104,7 +128,7 @@ int getNextToken()
         switch (state)
         {
         case 0:
-            printf("CASE 1\n");
+            printf("CASE 0\n");
             if (isalpha(ch) || ch == '_')
             {
                 pStartCh = pCrtCh; // memorizes the beginning of the ID
@@ -134,6 +158,159 @@ int getNextToken()
             {
                 line++;
                 pCrtCh++;
+            }
+            else if (ch == '\'')
+            {
+                printf("start of ct_char\n");
+                // state = 18;
+                char *aux = pCrtCh + 1;
+                pCrtCh++;
+                if (*aux == '\\')
+                {
+                    printf("ESC\n");
+                    state = 20;
+                }
+                else if (*aux != '\'' && *aux != '\\')
+                {
+                    printf("NOT ESC\n");
+                    state = 18;
+                }
+                else
+                {
+                    tkerr(addTk(END, line), "invalid char");
+                }
+            }
+            else if (ch == '\"')
+            {
+                printf("start of ct_char\n");
+                // state = 18;
+                char *aux = pCrtCh + 1;
+                pCrtCh++;
+                if (*aux == '\\')
+                {
+                    printf("ESC\n");
+                    state = 20;
+                }
+                else if (*aux != '\'' && *aux != '\\')
+                {
+                    printf("NOT ESC\n");
+                    state = 22;
+                }
+                else
+                {
+                    tkerr(addTk(END, line), "invalid string");
+                }
+            }
+            else if (ch == ',')
+            {
+                state = 36;
+            }
+            else if (ch == ';')
+            {
+                state = 37;
+            }
+            else if (ch == '(')
+            {
+                state = 38;
+            }
+            else if (ch == ')')
+            {
+                state = 39;
+            }
+            else if (ch == '[')
+            {
+                state = 40;
+            }
+            else if (ch == ']')
+            {
+                state = 41;
+            }
+            else if (ch == '{')
+            {
+                state = 42;
+            }
+            else if (ch == '}')
+            {
+                state = 43;
+            }
+            else if (ch == '+')
+            {
+                state = 44;
+            }
+            else if (ch == '-')
+            {
+                state = 45;
+            }
+            else if (ch == '*')
+            {
+                state = 46;
+            }
+            else if (ch == '/')
+            {
+                state = 47;
+            }
+            else if (ch == '.')
+            {
+                state = 48;
+            }
+            else if (ch == '&')
+            {
+                state = 49;
+            }
+            else if (ch == '|')
+            {
+                state = 51;
+            }
+            else if (ch == '!')
+            {
+                // printf("STR %s\n", pCrtCh);
+                // printf("CHARRRR %c\n", ch);
+                char *aux = pCrtCh + 1;
+                pCrtCh++;
+                if (*aux == '=')
+                {
+                    state = 58;
+                    // pCrtCh++;
+                    // tk = addTk(NOTEQ, line);
+                    // return tk->code;
+                }
+                else
+                {
+                    state = 53;
+                    // tk = addTk(NOT, line);
+                    // return tk->code;
+                }
+            }
+            else if (ch == '=')
+            {
+                pCrtCh++;
+                state = 54;
+            }
+            else if (ch == '<')
+            {
+                char *aux = pCrtCh + 1;
+                pCrtCh++;
+                if (*aux == '=')
+                {
+                    state = 60;
+                }
+                else
+                {
+                    state = 59;
+                }
+            }
+            else if (ch == '>')
+            {
+                char *aux = pCrtCh + 1;
+                pCrtCh++;
+                if (*aux == '=')
+                {
+                    state = 62;
+                }
+                else
+                {
+                    state = 61;
+                }
             }
             else
             {
@@ -176,11 +353,6 @@ int getNextToken()
                 printf(". read\n");
                 state = 8;
             }
-            else if (ch == 'e' || ch == 'E')
-            {
-                printf("e/E read\n");
-                state = 13;
-            }
             else
             {
                 state = 4;
@@ -215,6 +387,12 @@ int getNextToken()
                 printf("between 0 and 7\n");
                 pCrtCh++;
             }
+            else if (ch == 'e' || ch == 'E')
+            {
+                printf("E read\n");
+                pCrtCh++;
+                state = 13;
+            }
             else
             {
                 printf("8 or 9 was read\n");
@@ -237,6 +415,7 @@ int getNextToken()
             break;
         case 8:
             printf("CASE 8\n");
+            pCrtCh++;
             if (isdigit(ch))
             {
                 printf("is digit\n");
@@ -250,13 +429,290 @@ int getNextToken()
                 printf("is digit\n");
                 pCrtCh++;
             }
+            else if (ch == 'e' || ch == 'E')
+            {
+                printf("E read\n");
+                state = 13;
+            }
             else
             {
-                tk = addTk(CT_REAL, line);
-                tk->r = atof(pStartCh);
-                return tk->code;
+                state = 16;
             }
             break;
+        case 13:
+            printf("CASE 13\n");
+            pCrtCh++;
+            if (ch == '-' || ch == '+')
+            {
+                printf("- or + read\n");
+                state = 14;
+            }
+            else if (isdigit(ch))
+            {
+                printf("number read\n");
+                state = 15;
+            }
+            break;
+        case 14:
+            printf("CASE 14\n");
+            if (isdigit(ch))
+            {
+                printf("number read\n");
+                state = 15;
+            }
+            else
+            {
+                tkerr(addTk(END, line), "invalid character");
+            }
+            break;
+        case 15:
+            printf("CASE 15\n");
+
+            if (isdigit(ch))
+            {
+                printf("is digit\n");
+                pCrtCh++;
+            }
+            else
+            {
+                state = 16;
+            }
+            break;
+        case 16:
+            printf("CASE 16\n");
+            tk = addTk(CT_REAL, line);
+            tk->r = atof(pStartCh);
+            return tk->code;
+            break;
+        case 18:
+            printf("CASE 18\n");
+            // pCrtCh++;
+            printf("%c\n", ch);
+            if (ch != '\'' && ch != '\\')
+            {
+                pCrtCh++;
+                // tk = addTk(CT_CHAR, line);
+                // return tk->code;
+            }
+            else if (ch == '\'')
+            {
+                // pCrtCh++;
+                printf("END of single quote\n");
+                state = 24;
+            }
+            break;
+        case 20:
+            if (ch == 'a' || ch == 'b' || ch == 'f' || ch == 'n' || ch == 'r' || ch == 't' || ch == 'v' || ch == '\'' || ch == '?' || ch == '\\' || ch == '0')
+            {
+                printf("correct char inside char");
+                pCrtCh++;
+                state = 21;
+            }
+            else
+            {
+                tkerr(addTk(END, line), "invalid character inside ESC");
+            }
+        case 21:
+            pCrtCh++;
+            if (ch == '\'')
+            {
+                printf("END OF SINGEL quote\n");
+                state = 24;
+            }
+            else if (ch == '\"')
+            {
+                printf("END of quote\n");
+                state = 23;
+            }
+            break;
+        case 22:
+            // printf("%c\n", ch);
+            pCrtCh++;
+            if (ch != '\'' && ch != '\\')
+            {
+                printf("HEI\n");
+                // pCrtCh++;
+                // tk = addTk(CT_CHAR, line);
+                // return tk->code;
+            }
+            else if (ch == '\"')
+            {
+                // pCrtCh++;
+                printf("END of quote\n");
+                state = 23;
+            }
+            break;
+        case 23:
+            pCrtCh++;
+            tk = addTk(CT_STRING, line);
+            return tk->code;
+        case 24:
+            pCrtCh++;
+            tk = addTk(CT_CHAR, line);
+            return tk->code;
+        case 36:
+            printf("CASE 36\n");
+            pCrtCh++;
+            tk = addTk(COMMA, line);
+            return tk->code;
+        case 37:
+            printf("CASE 37\n");
+            pCrtCh++;
+            tk = addTk(SEMICOLON, line);
+            return tk->code;
+        case 38:
+            printf("CASE 38\n");
+            pCrtCh++;
+            tk = addTk(LPAR, line);
+            return tk->code;
+        case 39:
+            printf("CASE 39\n");
+            pCrtCh++;
+            tk = addTk(RPAR, line);
+            return tk->code;
+        case 40:
+            printf("CASE 40\n");
+            pCrtCh++;
+            tk = addTk(LBRACKET, line);
+            return tk->code;
+        case 41:
+            printf("CASE 41\n");
+            pCrtCh++;
+            tk = addTk(RBRACKET, line);
+            return tk->code;
+        case 42:
+            printf("CASE 42\n");
+            pCrtCh++;
+            tk = addTk(LACC, line);
+            return tk->code;
+        case 43:
+            printf("CASE 43\n");
+            pCrtCh++;
+            tk = addTk(RACC, line);
+            return tk->code;
+        case 44:
+            pCrtCh++;
+            tk = addTk(ADD, line);
+            return tk->code;
+        case 45:
+            pCrtCh++;
+            tk = addTk(SUB, line);
+            return tk->code;
+        case 46:
+            pCrtCh++;
+            tk = addTk(MUL, line);
+            return tk->code;
+        case 47:
+            pCrtCh++;
+            tk = addTk(DIV, line);
+            return tk->code;
+        case 48:
+            pCrtCh++;
+            tk = addTk(DOT, line);
+            return tk->code;
+        case 49:
+            printf("CASE 49\n");
+            printf("char %c\n", ch);
+            if (ch == '&')
+            {
+                pCrtCh++;
+                state = 50;
+            }
+            else
+            {
+                tkerr(addTk(END, line), "invalid character");
+            }
+            break;
+        case 50:
+            printf("CASE 50\n");
+            printf("char %c\n", ch);
+            pCrtCh++;
+            if (ch == '&')
+            {
+                printf("AND FOUND\n");
+                tk = addTk(AND, line);
+                return tk->code;
+            }
+            else
+            {
+
+                tkerr(addTk(END, line), "invalid character");
+            }
+            break;
+        case 51:
+            if (ch == '|')
+            {
+                pCrtCh++;
+                state = 52;
+            }
+            else
+            {
+                tkerr(addTk(END, line), "invalid character");
+            }
+            break;
+        case 52:
+            printf("CASE 52\n");
+            pCrtCh++;
+            if (ch == '|')
+            {
+                printf("OR FOUND\n");
+                tk = addTk(OR, line);
+                return tk->code;
+            }
+            else
+            {
+                tkerr(addTk(END, line), "invalid character");
+            }
+            break;
+        case 53:
+            printf("hhhhhh %s\n", pCrtCh);
+            tk = addTk(NOT, line);
+            return tk->code;
+
+            break;
+        case 54:
+            printf("CASE 54\n");
+            printf("char before %c\n", ch);
+            // pCrtCh++;
+            printf("char after %c\n", ch);
+            if (ch == '=')
+            {
+                printf("EQUAL\n");
+                state = 56;
+            }
+            else
+            {
+                state = 55;
+            }
+            break;
+        case 55:
+            printf("CASE 55!!!!!!\n");
+            // pCrtCh++;
+            tk = addTk(ASSIGN, line);
+            return tk->code;
+        case 56:
+            // pCrtCh++;
+            tk = addTk(EQUAL, line);
+            return tk->code;
+        case 58:
+            printf("CASE  58\n");
+            pCrtCh++;
+            tk = addTk(NOTEQ, line);
+            return tk->code;
+        case 59:
+            tk = addTk(LESS, line);
+            return tk->code;
+        case 60:
+            pCrtCh++;
+            tk = addTk(LESSEQ, line);
+            return tk->code;
+        case 61:
+            tk = addTk(GREATER, line);
+            return tk->code;
+        case 62:
+            pCrtCh++;
+            tk = addTk(GREATEREQ, line);
+            return tk->code;
         }
     }
 }
@@ -286,7 +742,7 @@ void showTokens()
 int main()
 {
 
-    const char input[] = "0123 hello029_ \n 02323.93208";
+    const char input[] = "\'ab?0\'";
     pCrtCh = input;
 
     while (*pCrtCh != '\0')
