@@ -13,7 +13,8 @@ enum
     ID,
     END,
     CT_INT,
-    CT_REAL
+    CT_REAL,
+    CT_CHAR,
 };
 
 typedef struct _Token
@@ -182,19 +183,18 @@ int getNextToken()
             }
             else
             {
-                printf("final int\n");
-                tk = addTk(CT_INT, line);
-                tk->i = strtol(pStartCh, NULL, 10);
-                return tk->code;
+                state = 4;
             }
             break;
         case 4:
+            printf("CASE 4\n");
             if (isdigit(ch))
                 pCrtCh++;
             else
             {
-                tk = addTk(CT_REAL, line);
-                tk->r = atof(pStartCh);
+                printf("final int\n");
+                tk = addTk(CT_INT, line);
+                tk->i = strtol(pStartCh, NULL, 10);
                 return tk->code;
             }
             break;
@@ -222,15 +222,38 @@ int getNextToken()
             }
             break;
         case 6:
-            if (isalnum(ch))
+            if (isalnum(ch) || isdigit(ch))
             {
                 printf("is alpha\n");
                 pCrtCh++;
             }
             else
             {
+                printf("final int\n");
                 tk = addTk(CT_INT, line);
-                tk->text = createString(pStartCh, pCrtCh);
+                tk->i = strtol(pStartCh, NULL, 10);
+                return tk->code;
+            }
+            break;
+        case 8:
+            printf("CASE 8\n");
+            if (isdigit(ch))
+            {
+                printf("is digit\n");
+                state = 9;
+            }
+            break;
+        case 9:
+            printf("CASE 9\n");
+            if (isdigit(ch))
+            {
+                printf("is digit\n");
+                pCrtCh++;
+            }
+            else
+            {
+                tk = addTk(CT_REAL, line);
+                tk->r = atof(pStartCh);
                 return tk->code;
             }
             break;
@@ -263,7 +286,7 @@ void showTokens()
 int main()
 {
 
-    const char input[] = "0123 hello";
+    const char input[] = "0123 hello029_ \n 02323.93208";
     pCrtCh = input;
 
     while (*pCrtCh != '\0')
