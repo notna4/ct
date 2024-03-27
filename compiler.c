@@ -39,6 +39,8 @@ enum
     LESSEQ,
     GREATER,
     GREATEREQ,
+    LINECOMMENT,
+    COMMENT, // 30
 };
 
 typedef struct _Token
@@ -173,6 +175,7 @@ int getNextToken()
                 else if (*aux != '\'' && *aux != '\\')
                 {
                     printf("NOT ESC\n");
+                    pCrtCh++;
                     state = 18;
                 }
                 else
@@ -182,7 +185,7 @@ int getNextToken()
             }
             else if (ch == '\"')
             {
-                printf("start of ct_char\n");
+                printf("start of ct_string\n");
                 // state = 18;
                 char *aux = pCrtCh + 1;
                 pCrtCh++;
@@ -191,7 +194,7 @@ int getNextToken()
                     printf("ESC\n");
                     state = 20;
                 }
-                else if (*aux != '\'' && *aux != '\\')
+                else if (*aux != '\"' && *aux != '\\')
                 {
                     printf("NOT ESC\n");
                     state = 22;
@@ -247,7 +250,34 @@ int getNextToken()
             }
             else if (ch == '/')
             {
-                state = 47;
+                // printf("STR %s\n", pCrtCh);
+                // printf("CHARRRR %c\n", ch);
+                char *aux = pCrtCh + 1;
+                pCrtCh++;
+                if (*aux == '/')
+                {
+                    printf("LINE COMMNET\n");
+                    state = 63;
+                    // pCrtCh++;
+                    // tk = addTk(NOTEQ, line);
+                    // return tk->code;
+                }
+                else
+                {
+                    if (*aux == '*')
+                    {
+                        pCrtCh++;
+
+                        state = 64;
+                    }
+                    else
+                    {
+                        state = 47;
+                    }
+
+                    // tk = addTk(NOT, line);
+                    // return tk->code;
+                }
             }
             else if (ch == '.')
             {
@@ -486,23 +516,27 @@ int getNextToken()
             break;
         case 18:
             printf("CASE 18\n");
-            // pCrtCh++;
+            pCrtCh++;
             printf("%c\n", ch);
-            if (ch != '\'' && ch != '\\')
-            {
-                pCrtCh++;
-                // tk = addTk(CT_CHAR, line);
-                // return tk->code;
-            }
-            else if (ch == '\'')
+            // if (ch != '\'' && ch != '\\')
+            // {
+            //     pCrtCh++;
+            //     // tk = addTk(CT_CHAR, line);
+            //     // return tk->code;
+            // }
+            if (ch == '\'')
             {
                 // pCrtCh++;
                 printf("END of single quote\n");
                 state = 24;
             }
+            else
+            {
+                tkerr(addTk(END, line), "invalid character inside char");
+            }
             break;
         case 20:
-            if (ch == 'a' || ch == 'b' || ch == 'f' || ch == 'n' || ch == 'r' || ch == 't' || ch == 'v' || ch == '\'' || ch == '?' || ch == '\\' || ch == '0')
+            if (ch == 'a' || ch == 'b' || ch == 'f' || ch == 'n' || ch == 'r' || ch == 't' || ch == 'v' || ch == '\'' || ch == '?' || ch == '\\' || ch == '\0')
             {
                 printf("correct char inside char");
                 pCrtCh++;
@@ -513,7 +547,7 @@ int getNextToken()
                 tkerr(addTk(END, line), "invalid character inside ESC");
             }
         case 21:
-            pCrtCh++;
+            // pCrtCh++;
             if (ch == '\'')
             {
                 printf("END OF SINGEL quote\n");
@@ -524,16 +558,18 @@ int getNextToken()
                 printf("END of quote\n");
                 state = 23;
             }
+            // else
+            // {
+            //     tkerr(addTk(END, line), "invalid character inside 21\n");
+            // }
             break;
         case 22:
             // printf("%c\n", ch);
             pCrtCh++;
-            if (ch != '\'' && ch != '\\')
+            if (ch != '\"' && ch != '\\')
             {
-                printf("HEI\n");
                 // pCrtCh++;
-                // tk = addTk(CT_CHAR, line);
-                // return tk->code;
+                printf("HEI\n");
             }
             else if (ch == '\"')
             {
@@ -543,7 +579,6 @@ int getNextToken()
             }
             break;
         case 23:
-            pCrtCh++;
             tk = addTk(CT_STRING, line);
             return tk->code;
         case 24:
@@ -713,6 +748,34 @@ int getNextToken()
             pCrtCh++;
             tk = addTk(GREATEREQ, line);
             return tk->code;
+        case 63:
+            pCrtCh++;
+            tk = addTk(LINECOMMENT, line);
+            return tk->code;
+            break;
+        case 64:
+            printf("CASE 64\n");
+            printf("%c\n", ch);
+            // pCrtCh++;
+            if (ch == '*')
+            {
+                char *aux = pCrtCh + 1;
+                printf("aux %c\n", *aux);
+                if (*aux == '/')
+                {
+                    pCrtCh++;
+                    tk = addTk(COMMENT, line);
+                    return tk->code;
+                }
+                else
+                {
+                    tkerr(addTk(END, line), "invalid comment");
+                }
+            }
+            // else
+            // {
+            //     pCrtCh++;
+            // }
         }
     }
 }
@@ -742,7 +805,7 @@ void showTokens()
 int main()
 {
 
-    const char input[] = "\'ab?0\'";
+    const char input[] = "/**/";
     pCrtCh = input;
 
     while (*pCrtCh != '\0')
